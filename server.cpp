@@ -2,16 +2,26 @@
 // socket programming
 #include <cstring>
 #include <iostream>
-#include <netinet/in.h>
-#include <sys/socket.h>
+#include <winsock2.h>
+#include <windows.h>
+// #include <netinet/in.h>
+// #include <sys/socket.h>
 #include <unistd.h>
 
 using namespace std;
 
 int main()
 {
+    WSADATA wsa;
     // configuration
     int PORT = 8080;
+
+    //Khởi tạo winsock
+    std::cout << "Initializing Winsock..." << std::endl;
+    if (WSAStartup(MAKEWORD(2, 2), &wsa) != 0) {
+        std::cout << "Failed. Error Code: " << WSAGetLastError() << std::endl;
+        return 1;
+    }
 
     // creating socket
     int serverSocket = socket(AF_INET, SOCK_STREAM, 0);
@@ -38,13 +48,18 @@ int main()
         {
             memset(&buffer, 0, sizeof(buffer));
             int nread = recv(clientSocket, buffer, sizeof(buffer), 0);
+            cout << nread << endl; 
             if (nread == 0)
                 break;
-
+        if (nread == SOCKET_ERROR) {
+            std::cout << "Recv failed: " << WSAGetLastError() << std::endl;
+            break;
+        }
             cout << "Message from client: " << buffer
                  << endl;
+         
         }
-        close(clientSocket);
+           close(serverSocket);
     }
 
     // closing the socket.
