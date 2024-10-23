@@ -48,7 +48,7 @@ int main() {
         return 1;
     }
   Socket socket;
-  socket.connectServer("127.0.0.1");
+  socket.connectServer("127.0.0.1");  
   socket.sendMessage("Hello");
   while(1);
 }
