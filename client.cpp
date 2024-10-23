@@ -30,7 +30,9 @@ public:
     connect(clientSocket, (struct sockaddr *)&serverAddress,
             sizeof(serverAddress));
   };
-  void sendMessage(string msg) { send(clientSocket, msg, strlen(msg), 0); };
+  void sendMessage(string msg) {
+    send(clientSocket, msg.c_str(), msg.size(), 0);
+  };
   void closeConnection() { close(clientSocket); }
 };
 
