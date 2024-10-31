@@ -22,13 +22,13 @@ int main()
 
   // initialize socket
   Socket socket;
+  cout << "Connecting to server..." << endl;
   int res = socket.connectServer("127.0.0.1");
   if (res < 0)
   {
     cout << "Failed to connect to server" << endl;
     return -1;
   }
-
   cout << "Connected to server" << endl;
 
   // initialize mail API
@@ -40,55 +40,53 @@ int main()
   GmailAPI g(access_token);
   while (1)
   {
-    cout << "Checking new mail..." << endl;
+    cout << "Reading all mails..." << endl;
     string mailStr = g.readMail();
 
-    if (mailStr != "error")
-    {
-      json mailJson = json::parse(mailStr);
+    if (mailStr == "error")
+      return -1;
 
-      // check new mail
-      if (currMailIdx >= mailJson["value"].size())
+    // check if there is new mail
+    json mailJson = json::parse(mailStr);
+    cout << "Checking new mail..." << endl;
+    if (currMailIdx >= mailJson["value"].size())
+    {
+      cout << "No new mail to processed " << endl;
+      sleep(5);
+      continue;
+    }
+    else
+      cout << "New mail available, processing new mail..." << endl;
+
+    // extract mail content to to use as command
+    string body = mailJson["value"][currMailIdx]["body"]["content"];
+    string subject = mailJson["value"][currMailIdx]["subject"];
+    string command = subject + ":" + body;
+
+    // request to server
+    cout << "Sending command: " << command << " to server, waiting for server response..." << endl;
+    string res = socket.sendMessage(command);
+    cout << "Server response: " << res << endl;
+
+    // if server response, sendMail back to notify user
+    if (res == "ok")
+    {
+      cout << "Server response success, sending mail back to Outlook..." << endl;
+      string sendMailRes = g.sendMail(command + "executed");
+      if (sendMailRes == "error")
       {
-        for (int i = 0; i < mailJson["value"].size(); i++)
-        {
-          cout << "Mail " << i << ": " << mailJson["value"][i]["subject"] << endl;
-        }
-        cout << "No new mail to processed " << endl;
-        sleep(5);
-        continue;
+        cout << "Send mail failed" << endl;
+        break;
       }
       else
       {
-        cout << "Processing new mail..." << endl;
-      }
-
-      // extract subject + body
-      string body = mailJson["value"][currMailIdx]["body"]["content"];
-      string subject = mailJson["value"][currMailIdx]["subject"];
-
-      // request to server
-      string command = subject + ":" + body;
-      cout << "Sending command: " << command << endl;
-      string res = socket.sendMessage(command);
-
-      // if server response, sendMail back
-      if (res == "ok")
-      {
-        string sendMailRes = g.sendMail(command + "executed");
-        if (sendMailRes == "error")
-        {
-          cout << "Send mail failed" << endl;
-          break;
-        }
-        else
-        {
-          cout << "Send mail success" << endl;
-          currMailIdx++;
-        }
+        cout << "Send mail success" << endl;
+        currMailIdx++;
       }
     }
+    else
+      cout << "Server response failed" << endl;
 
-    sleep(5);
+    sleep(10);
   }
 }

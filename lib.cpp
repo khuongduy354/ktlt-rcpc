@@ -82,8 +82,6 @@ public:
     string sendMessage(string msg)
     {
         send(socketDescriptor, msg.c_str(), msg.size(), 0);
-        cout << "Sent message: " << msg << endl;
-        cout << "Waiting for response..." << endl;
 
         char buffer[1024];
         memset(&buffer, 0, sizeof(buffer)); // clear the buffer
@@ -93,7 +91,6 @@ public:
             if (bytesRead > 0)
                 break;
         }
-        cout << "Received message: " << buffer << endl;
         return string(buffer);
     };
     void closeConnection() { close(socketDescriptor); }
@@ -191,7 +188,6 @@ public:
             "Content-Length: " +
             to_string(mailPayload.dump().size());
 
-        cout << mailPayload.dump(4) << endl;
         string draftStr = fetch(draftUrl, HTTPMethod::POST, {"Content-Type: application/json", contentLengthHeader}, mailPayload.dump());
 
         if (draftStr == "error")
