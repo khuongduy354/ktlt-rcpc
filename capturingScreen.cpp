@@ -1,12 +1,3 @@
-#include <cstring>
-#include <iostream>
-#include <string>
-#include "lib.cpp"
-#include <unistd.h>
-#include <gdiplus.h>
-
-
-
 // Support both Linux and Windows machine
 #ifdef _WIN32
 #include <winsock2.h>
@@ -16,6 +7,17 @@
 #include <netinet/in.h>
 #include <sys/socket.h>
 #endif
+#include <cstring>
+#include <iostream>
+#include <string>
+// #include "lib.cpp"
+#include <unistd.h>
+#include <gdiplus.h>
+#pragma comment(lib, "gdiplus")
+#pragma comment(lib, "Gdiplus.lib")
+
+
+
 
 using namespace std;
 using namespace Gdiplus;
@@ -23,17 +25,6 @@ using namespace Gdiplus;
 void serverCallback(char buffer[1024])
 {
     cout << "Client: " << buffer << endl;
-    
-}
-
-void shutDownComputer(){
-    cout << "Computer will shut down in 30 second!";
-    system("C:\\windows\\system32\\shutdown /s /t 30 \n\n");
-}   
-
-void restartComputer(){
-    cout << "Computer will restart in 30 second!";
-    system("C:\\windows\\system32\\shutdown /r /t 30\n\n");
 }
 
 // function that handle png/jpec image
@@ -90,24 +81,8 @@ void captureScreen(const string &file_path){
     ReleaseDC(NULL, hdcScreen);
     GdiplusShutdown(gdipToken);
 }
-
 int main()
 {
-#ifdef _WIN32
-    WSADATA wsa;
-
-    // Khởi tạo winsock
-    std::cout << "Initializing Winsock..." << std::endl;
-    if (WSAStartup(MAKEWORD(2, 2), &wsa) != 0)
-    {
-        std::cout << "Failed. Error Code: " << WSAGetLastError() << std::endl;
-        return 1;
-    }
-#endif
-    Socket socket;
-    socket.hostServer();
-    socket.listenForConnection(&serverCallback);
-    
-    captureScreen("E:\\ProjectMMT\\ktlt-rcpc\\screenshot.png");
+    captureScreen("E:\\ProjectMMT\\screenshot.png");
     return 0;
 }

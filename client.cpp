@@ -19,6 +19,7 @@ int main()
   Socket socket;
   socket.connectServer("127.0.0.1");
   socket.sendMessage("Hello");
+  socket.sendMessage("captureScreen-filepath: ");
   while (1)
     ;
 }
