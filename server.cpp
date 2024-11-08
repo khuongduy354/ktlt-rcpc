@@ -1,11 +1,5 @@
-#include <cstring>
-#include <iostream>
-#include <string>
 #include "lib.cpp"
-#include <unistd.h>
 #include <gdiplus.h>
-
-
 
 // Support both Linux and Windows machine
 #ifdef _WIN32
@@ -15,13 +9,13 @@
 #elif unix
 #include <netinet/in.h>
 #include <sys/socket.h>
+#include <unistd.h>
 #endif
 
 using namespace std;
 using namespace Gdiplus;
 
-void serverCallback(char buffer[1024])
-{
+void serverCallback(char buffer[1024]){
     cout << "Client: " << buffer << endl;
     
 }
@@ -34,6 +28,70 @@ void shutDownComputer(){
 void restartComputer(){
     cout << "Computer will restart in 30 second!";
     system("C:\\windows\\system32\\shutdown /r /t 30\n\n");
+}
+
+bool sendDataToClient(SOCKET s, const string &filePath) 
+{
+    char buffer[BUFFER_SIZE];
+
+    int f = filePath.find('.');
+    string fileType = filePath.substr(f);
+    send(s, (char *)&fileType, fileType.length() + 1, 0);
+
+    ifstream file(filePath, ios::binary);
+    if (!file.is_open()) 
+    {
+        cerr << "Could not open file: " << filePath << endl;
+        return false;
+    }
+
+    cout << "Sending file: " << filePath << " to client." << endl;
+
+    while (file.read(buffer, BUFFER_SIZE) || file.gcount() > 0) 
+    {
+        int bytesToSend = static_cast<int>(file.gcount());
+        if (send(s, buffer, bytesToSend, 0) == SOCKET_ERROR) 
+        {
+            cerr << "Failed to send data to client." << endl;
+            file.close();
+            return false;
+        }
+    }
+    file.close();
+    cout << "File sent successfully." << endl;
+    return true;
+}
+
+void sendListApps(SOCKET s) {
+    system("wmic product get name,version > listApps.txt");
+    Sleep(20000);
+    sendDataToClient(s, "listApps.txt");
+} 
+
+void startApp(const string &appName) {
+    string s = "start " + appName;
+    system(s.c_str());
+}
+
+void stopApp(const string &appName) {
+    string s = "taskkill /IM " + appName + ".exe /F";
+    system(s.c_str());
+}
+
+void sendListServices(SOCKET s) {
+    system("wmic service get name, displayname, state > listServices.txt");
+    Sleep(20000);
+    sendDataToClient(s, "listApps.txt");
+}
+
+void startService(const string &serviceName) {
+    string s = "sc start " + serviceName;
+    system(s.c_str());
+}
+
+void stopService(const string &serviceName) {
+    string s = "sc stop " + serviceName;
+    system(s.c_str());
 }
 
 // function that handle png/jpec image
@@ -62,6 +120,8 @@ int GetEncoderClsid(const WCHAR* format, CLSID* pClsid){
     free(pImageCodecInfo);
     return -1;
 }
+
+
 // CaptureScreen
 void captureScreen(const string &file_path){
     //HDC stand for handle to device context it use to obtain graphical component
@@ -91,8 +151,7 @@ void captureScreen(const string &file_path){
     GdiplusShutdown(gdipToken);
 }
 
-int main()
-{
+int main() {
 #ifdef _WIN32
     WSADATA wsa;
 

@@ -1,16 +1,18 @@
 #include <cstring>
 #include <iostream>
 #include <string>
-#include <unistd.h>
-
+#include <fstream>
 #ifdef _WIN32
 #include <winsock2.h>
 #elif __linux
 #include <netinet/in.h>
 #include <arpa/inet.h>
 #include <sys/socket.h>
+#include <unistd.h>
 #endif
 using namespace std;
+
+const int BUFFER_SIZE = 1024;
 class Socket
 {
 private:
@@ -79,5 +81,11 @@ public:
     {
         send(socketDescriptor, msg.c_str(), msg.size(), 0);
     };
-    void closeConnection() { close(socketDescriptor); }
+    void closeConnection() { 
+#ifdef _WIN32   
+        closesocket(socketDescriptor);
+#elif unix
+        close(socketDescriptor); 
+#endif
+        }
 };
