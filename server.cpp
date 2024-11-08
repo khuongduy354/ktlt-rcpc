@@ -94,6 +94,11 @@ void stopService(const string &serviceName) {
     system(s.c_str());
 }
 
+void deleteFile(const string &filePath) {
+    string s = "del " + filePath;
+    system(s.c_str());
+}
+
 // function that handle png/jpec image
 int GetEncoderClsid(const WCHAR* format, CLSID* pClsid){
     UINT num = 0;   // number of image encoders
