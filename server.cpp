@@ -15,9 +15,10 @@
 using namespace std;
 using namespace Gdiplus;
 
-void serverCallback(char buffer[1024]){
+void serverCallback(char buffer[1024], int clientSocket)
+{
     cout << "Client: " << buffer << endl;
-    
+    send(clientSocket, "ok", strlen("ok"), 0);
 }
 
 void shutDownComputer(){
