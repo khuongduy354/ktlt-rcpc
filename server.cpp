@@ -17,7 +17,24 @@ using namespace Gdiplus;
 
 void serverCallback(char buffer[1024], int clientSocket)
 {
-    cout << "Client: " << buffer << endl;
+    cout << "Client: " << buffer << endl; 
+    string msg = to_string(buffer);
+    // "COMMAND$PAYLOAD"  
+    vector<string> msgArr = split(msg,"$");
+    string command = msgArr[0];
+    string payload = msgArr[1];
+
+
+    // match commands 
+    switch(command){
+        case "":  
+
+        break; 
+        default:    
+        cout << "Unknown command from client: " << msg << endl;
+        break;
+    }
+    
     send(clientSocket, "ok", strlen("ok"), 0);
 }
 

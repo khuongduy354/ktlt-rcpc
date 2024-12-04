@@ -1,7 +1,7 @@
 #include "lib.cpp"
 #include <iostream>
 #include <string>
-#include <c++json/single_include/nlohmann/json.hpp>
+#include <nlohmann/json.hpp>
 using json = nlohmann::json;
 using namespace std;
 

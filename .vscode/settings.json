@@ -16,7 +16,8 @@
     "-Wconversion",
     "-Wsign-conversion",
     "-Wnull-dereference"
-  ],
+  ], 
+  "git.path":"D:\\Apps\\Gits\\cmd\\git.exe",
   "C_Cpp_Runner.msvcWarnings": [
     "/W4",
     "/permissive-",
