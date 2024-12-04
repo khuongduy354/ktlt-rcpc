@@ -7,14 +7,18 @@
 #include <c++json/single_include/nlohmann/json.hpp>
 using json = nlohmann::json;
 
+#include <fstream>
 #ifdef _WIN32
 #include <winsock2.h>
 #elif __linux
 #include <netinet/in.h>
 #include <arpa/inet.h>
 #include <sys/socket.h>
+#include <unistd.h>
 #endif
 using namespace std;
+
+const int BUFFER_SIZE = 1024;
 class Socket
 {
 private:
@@ -93,7 +97,13 @@ public:
         }
         return string(buffer);
     };
-    void closeConnection() { close(socketDescriptor); }
+    void closeConnection() { 
+#ifdef _WIN32   
+        closesocket(socketDescriptor);
+#elif unix
+        close(socketDescriptor); 
+#endif
+        }
 };
 
 class GmailAPI
@@ -204,4 +214,5 @@ public:
         // cout << "Send mail response: " << res << endl;
         return id;
     }
+
 };

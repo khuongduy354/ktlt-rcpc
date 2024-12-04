@@ -9,7 +9,7 @@
     {
       "type": "shell",
       "label": "build server only ",
-      "command": "g++ server.cpp lib.cpp -o server.exe",
+      "command": "g++ server.cpp lib.cpp -o server.exe -lgdiplus -lws2_32 -lgdi32",
       "problemMatcher": ["$gcc"]
     },
     {
