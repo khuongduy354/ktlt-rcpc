@@ -29,9 +29,9 @@ void serverCallback(char buffer[1024], int clientSocket)
     // "COMMAND$PAYLOAD"  
     //shutdown$ 
     //keylogging$a
-    vector<string> msgArr = split(msg,"$");
-    string command = msgArr[0];
-    string payload = msgArr[1]; 
+    // vector<string> msgArr = splitStr(msg,"$");
+    // string command = msgArr[0];
+    // string payload = msgArr[1]; 
 
 
 
@@ -312,10 +312,52 @@ int main() {
         return 1;
     }
 #endif
-    Socket socket;
-    socket.hostServer();
-    socket.listenForConnection(&serverCallback);
+    // Socket socket;
+    // socket.hostServer();
+    // socket.listenForConnection(&serverCallback);
     
-    captureScreen("E:\\ProjectMMT\\ktlt-rcpc\\screenshot.png");
+    // captureScreen("E:\\ProjectMMT\\ktlt-rcpc\\screenshot.png"); 
+
+
+    
+    // TEsTING EFATURES 
+    // loi dll ko chay dc 
+    // shut down/reset 
+    // shutdown() 
+    // restartComputer();
+
+
+    // list app 
+    // system("wmic product get name,version > listApps.txt"); 
+
+    // start/stop app
+    // startApp("notepad"); 
+    // stopApp("notepad"); 
+
+    // list services 
+    // system("wmic service get name, displayname, state > listServices.txt");
+
+    // start/stop services
+    // startService("abc") 
+    // stopService("abc") 
+
+
+
+    // get file 
+    // sendDataToClient() 
+
+    //delete file 
+    //  deleteFile("path");
+
+    // screen shot 
+    // captureScreen("D:\\Development\\ktlt-rcpc-master\\ktlt-rcpc\\screenshot.png");  
+ 
+    // record webcam   
+    // saveRecord()
+
+    // keylogger  
+    // ??
+
+
     return 0;
 }
