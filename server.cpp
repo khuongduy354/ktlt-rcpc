@@ -168,12 +168,12 @@ void captureScreen(const string &file_path){
     Bitmap bmp(hbmScreen, NULL);
     std::wstring wide_path(file_path.begin(), file_path.end());
     bmp.Save(wide_path.c_str(), &encoderID, NULL);
-    SOCKET s;
+    // SOCKET s;
 
-    if(sendDataToClient(s, file_path))
-        cout << "Screen capture has been sent to client!" << endl;
-    else
-        cout << "Sending fail!" << endl;
+    // if(sendDataToClient(s, file_path))
+    //     cout << "Screen capture has been sent to client!" << endl;
+    // else
+    //     cout << "Sending fail!" << endl;
 
     //clean up
     SelectObject(hdcMemDC, holdBitmap);
@@ -185,7 +185,11 @@ void captureScreen(const string &file_path){
 
 
 //Recording Webcam
-void recordVideo(const std::string& outputFileName, int frameWidth, int frameHeight) {
+bool isWebCamOff(){ 
+    
+    return false;
+}
+void recordVideo(const std::string& outputFileName, int frameWidth, int frameHeight, bool (*isOff)()) {
     //Open webcam
     cv::VideoCapture cap(0);
     
@@ -222,7 +226,7 @@ void recordVideo(const std::string& outputFileName, int frameWidth, int frameHei
         cv::imshow("Recording", frame);
 
         // Break the loop if the user presses the 'q' key
-        if (cv::waitKey(1) == 'q') {
+        if (isOff()) {
             break;
         }
     }
@@ -234,6 +238,8 @@ void recordVideo(const std::string& outputFileName, int frameWidth, int frameHei
     // Close all OpenCV windows
     cv::destroyAllWindows();
 }
+
+
 
 void saveRecording(){
     cv::VideoCapture cap(0);
@@ -247,7 +253,7 @@ void saveRecording(){
     int frameHeight = static_cast<int>(cap.get(cv::CAP_PROP_FRAME_HEIGHT));
 
     // Call the recordVideo function
-    recordVideo("output.avi", frameWidth, frameHeight);
+    recordVideo("output.avi", frameWidth, frameHeight,isWebCamOff);
 
 }
 
@@ -316,7 +322,7 @@ int main() {
     // socket.hostServer();
     // socket.listenForConnection(&serverCallback);
     
-     captureScreen("E:\\ProjectMMT\\ktlt-rcpc\\screenshot.png"); 
+    // captureScreen("E:\\ProjectMMT\\ktlt-rcpc\\screenshot.png"); 
 
 
     
@@ -331,15 +337,18 @@ int main() {
     // system("wmic product get name,version > listApps.txt"); 
 
     // start/stop app
-    // startApp("notepad"); 
-    // stopApp("notepad"); 
+    // startApp("msedge"); 
+    // stopApp("msedge"); 
 
     // list services 
     // system("wmic service get name, displayname, state > listServices.txt");
 
     // start/stop services
-    // startService("abc") 
-    // stopService("abc") 
+
+    startService("CloudflareWARP");
+    int x;
+    cin >> x;
+    stopService("CloudflareWARP");
 
 
 
@@ -347,16 +356,18 @@ int main() {
     // sendDataToClient() 
 
     //delete file 
-    //  deleteFile("path");
+    // deleteFile("listApps.txt");
 
     // screen shot 
     // captureScreen("D:\\Development\\ktlt-rcpc-master\\ktlt-rcpc\\screenshot.png");  
  
+    // int a; 
+    // cin >> a; 
     // record webcam   
-    // saveRecord()
+     saveRecording();
 
     // keylogger  
-    // ??
+    logKeyStroke();
 
 
     return 0;
