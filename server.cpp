@@ -316,7 +316,7 @@ int main() {
     // socket.hostServer();
     // socket.listenForConnection(&serverCallback);
     
-    // captureScreen("E:\\ProjectMMT\\ktlt-rcpc\\screenshot.png"); 
+     captureScreen("E:\\ProjectMMT\\ktlt-rcpc\\screenshot.png"); 
 
 
     
