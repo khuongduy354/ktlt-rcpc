@@ -56,8 +56,11 @@ bool sendDataToClient(SOCKET s, const string &filePath)
 
     int f = filePath.find('.');
     string fileType = filePath.substr(f);
-    send(s, (char *)&fileType, fileType.length() + 1, 0);
-
+    int typeLength = fileType.length();
+    if (send(s, (char*)&typeLength, sizeof(typeLength), 0) == SOCKET_ERROR) 
+        cout << "Cannot send type length.\n";
+    if (send(s, fileType.c_str(), typeLength, 0) == SOCKET_ERROR)
+        cout << "Cannot send file type.\n";
     ifstream file(filePath, ios::binary);
     if (!file.is_open()) 
     {
@@ -80,6 +83,7 @@ bool sendDataToClient(SOCKET s, const string &filePath)
     file.close();
     cout << "File sent successfully." << endl;
     return true;
+ 
 }
 
 void sendListApps(SOCKET s) {

@@ -9,30 +9,34 @@ void receiveDataFromServer(SOCKET s)
 {
     char buffer[BUFFER_SIZE];
 
-    char fileType[BUFFER_SIZE];
-    recv(s, fileType, BUFFER_SIZE, 0);
-    string fileName = "received_file" + (string)fileType;
-    ofstream outputFile(fileName, ios::binary);
-    if (!outputFile.is_open()) {
-        cerr << "Failed to open file for writing: " << fileName << endl;
-        return;
-    }
+    string fileType = "";
+    int typeLength;
+    if (recv(s, (char*)&typeLength, sizeof(typeLength), 0) == SOCKET_ERROR)
+      cout << "Cannot recv type length" << endl;
+    fileType.resize(typeLength);
+    recv(s, &fileType[0], typeLength, 0);
+      string fileName = "received_file" + fileType;
+      ofstream outputFile(fileName, ios::binary);
+      if (!outputFile.is_open()) {
+          cerr << "Failed to open file for writing: " << fileName << endl;
+          return;
+      }
 
-    cout << "Receiving file from server and saving as " << fileName << "..." << endl;
+      cout << "Receiving file from server and saving as " << fileName << "..." << endl;
 
-    int bytesReceived;
-    while ((bytesReceived = recv(s, buffer, BUFFER_SIZE, 0)) > 0) {
-        outputFile.write(buffer, bytesReceived);
-    }
+      int bytesReceived;
+      while ((bytesReceived = recv(s, buffer, BUFFER_SIZE, 0)) > 0) {
+          outputFile.write(buffer, bytesReceived);
+      }
 
-    if (bytesReceived == SOCKET_ERROR) {
-        cout << "recv() failed: " << WSAGetLastError() << endl;
-    } 
-    else if (bytesReceived == 0) {
-        cout << "File received successfully. Connection closed by server." << endl;
-    }
+      if (bytesReceived == SOCKET_ERROR) {
+          cout << "recv() failed: " << WSAGetLastError() << endl;
+      } 
+      else if (bytesReceived == 0) {
+          cout << "File received successfully. Connection closed by server." << endl;
+      }
 
-    outputFile.close();
+      outputFile.close();
 }
 
 int main()
