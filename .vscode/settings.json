@@ -16,8 +16,8 @@
     "-Wconversion",
     "-Wsign-conversion",
     "-Wnull-dereference"
-  ], 
-  "git.path":"D:\\Apps\\Gits\\cmd\\git.exe",
+  ],
+  "git.path": "D:\\Apps\\Gits\\cmd\\git.exe",
   "C_Cpp_Runner.msvcWarnings": [
     "/W4",
     "/permissive-",
@@ -58,9 +58,6 @@
   "C_Cpp_Runner.useLinkTimeOptimization": false,
   "C_Cpp_Runner.msvcSecureNoWarnings": false,
   "C_Cpp.errorSquiggles": "enabled",
-  "files.associations": {
-    "iostream": "cpp"
-  },
   "files.associations": {
     "ostream": "cpp",
     "any": "cpp",
