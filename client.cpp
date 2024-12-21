@@ -1,47 +1,111 @@
 #include "lib.cpp"
 #include <iostream>
 #include <string>
+#include <locale>
+#include <codecvt>
 #include <nlohmann/json.hpp>
 using json = nlohmann::json;
 using namespace std;
 
-void receiveDataFromServer(SOCKET s) 
+void writeToFile(string buffer, string filename)
 {
-    char buffer[BUFFER_SIZE];
+  ofstream outputFile(filename, ios::binary);
+  outputFile.write(buffer.c_str(), buffer.size());
+  outputFile.close();
+}
+string receiveDataFromServer(SOCKET s, string filename)
+{
+  char buffer[BUFFER_SIZE];
+  int bytesReceived;
+  string total;
+  while ((bytesReceived = recv(s, buffer, BUFFER_SIZE, 0)) > 0)
+  {
+    total.append(buffer, bytesReceived);
+  }
 
-    string fileType = "";
-    int typeLength;
-    if (recv(s, (char*)&typeLength, sizeof(typeLength), 0) == SOCKET_ERROR)
-      cout << "Cannot recv type length" << endl;
-    fileType.resize(typeLength);
-    recv(s, &fileType[0], typeLength, 0);
-      string fileName = "received_file" + fileType;
-      ofstream outputFile(fileName, ios::binary);
-      if (!outputFile.is_open()) {
-          cerr << "Failed to open file for writing: " << fileName << endl;
-          return;
-      }
+  if (bytesReceived == SOCKET_ERROR)
+  {
+    cout << "recv() failed: " << WSAGetLastError() << endl;
+  }
+  else if (bytesReceived == 0)
+  {
+    cout << "File received successfully. Connection closed by server." << endl;
+  }
 
-      cout << "Receiving file from server and saving as " << fileName << "..." << endl;
+  return total;
+}
+string encodeBase64(string input)
+{
+  static const char base64_chars[] =
+      "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
+      "abcdefghijklmnopqrstuvwxyz"
+      "0123456789+/";
 
-      int bytesReceived;
-      while ((bytesReceived = recv(s, buffer, BUFFER_SIZE, 0)) > 0) {
-          outputFile.write(buffer, bytesReceived);
-      }
+  string encoded;
+  size_t i = 0;
+  unsigned char char_array_3[3];
+  unsigned char char_array_4[4];
 
-      if (bytesReceived == SOCKET_ERROR) {
-          cout << "recv() failed: " << WSAGetLastError() << endl;
-      } 
-      else if (bytesReceived == 0) {
-          cout << "File received successfully. Connection closed by server." << endl;
-      }
+  for (size_t index = 0; index < input.size(); index++)
+  {
+    char_array_3[i++] = input[index];
+    if (i == 3)
+    {
+      char_array_4[0] = (char_array_3[0] & 0xfc) >> 2;
+      char_array_4[1] = ((char_array_3[0] & 0x03) << 4) + ((char_array_3[1] & 0xf0) >> 4);
+      char_array_4[2] = ((char_array_3[1] & 0x0f) << 2) + ((char_array_3[2] & 0xc0) >> 6);
+      char_array_4[3] = char_array_3[2] & 0x3f;
 
-      outputFile.close();
+      for (i = 0; i < 4; i++)
+        encoded += base64_chars[char_array_4[i]];
+      i = 0;
+    }
+  }
+
+  if (i)
+  {
+    for (size_t j = i; j < 3; j++)
+      char_array_3[j] = '\0';
+
+    char_array_4[0] = (char_array_3[0] & 0xfc) >> 2;
+    char_array_4[1] = ((char_array_3[0] & 0x03) << 4) + ((char_array_3[1] & 0xf0) >> 4);
+    char_array_4[2] = ((char_array_3[1] & 0x0f) << 2) + ((char_array_3[2] & 0xc0) >> 6);
+    char_array_4[3] = char_array_3[2] & 0x3f;
+
+    for (size_t j = 0; j < i + 1; j++)
+      encoded += base64_chars[char_array_4[j]];
+
+    while ((i++ < 3))
+      encoded += '=';
+  }
+  return encoded;
 }
 
+string readFile(string filePath)
+{
+  ifstream file(filePath, ios::binary);
+
+  char buffer[1024];
+  string total;
+  while (file.read(buffer, BUFFER_SIZE) || file.gcount() > 0)
+  {
+    total.append(buffer, file.gcount());
+  }
+  total.append(buffer, file.gcount());
+
+  file.close();
+  return total;
+}
+int mailMain(Socket socket, GmailAPI g);
 int main()
 {
 #ifdef _WIN32
+  // Set console code page to UTF-8 so console known how to interpret string data
+  SetConsoleOutputCP(CP_UTF8);
+
+  // Enable buffering to prevent VS from chopping up UTF-8 byte sequences
+  setvbuf(stdout, nullptr, _IOFBF, 1000);
+
   WSADATA wsa;
   // configuration
 
@@ -57,74 +121,88 @@ int main()
   // initialize socket
   Socket socket;
   cout << "Connecting to server..." << endl;
-  int res = socket.connectServer("127.0.0.1");
-  if (res < 0)
-  {
-    cout << "Failed to connect to server" << endl;
-    return -1;
-  }
-  cout << "Connected to server" << endl;
-
-  // Capture screen
-  socket.sendMessage("captureScreen-filepath: ");
 
   // initialize mail API
   string access_token;
   cout << "Please input access_token:" << endl;
   cin >> access_token;
 
-  int currMailIdx = 0;
   GmailAPI g(access_token);
+
+  mailMain(socket, g);
+}
+
+int mailMain(Socket socket, GmailAPI g)
+{
+
+  int currMailIdx = 0;
 
   while (1)
   {
+
     cout << "Reading all mails..." << endl;
     string mailStr = g.readMail();
-
-    if (mailStr == "error")
-      return -1;
-
-    // check if there is new mail
     json mailJson = json::parse(mailStr);
-    cout << "Checking new mail..." << endl;
-    if (currMailIdx >= mailJson["value"].size())
+
+    while (1)
     {
-      cout << "No new mail to processed " << endl;
-      sleep(5);
-      continue;
-    }
-    else
-      cout << "New mail available, processing new mail..." << endl;
-
-    // extract mail content to to use as command
-    string body = mailJson["value"][currMailIdx]["body"]["content"];
-    string subject = mailJson["value"][currMailIdx]["subject"];
-    string command = subject + ":" + body;
-
-    // request to server
-    cout << "Sending command: " << command << " to server, waiting for server response..." << endl;
-    string res = socket.sendMessage(command);
-    cout << "Server response: " << res << endl;
-
-    // if server response, sendMail back to notify user
-    if (res == "ok")
-    {
-      cout << "Server response success, sending mail back to Outlook..." << endl;
-      string sendMailRes = g.sendMail(command + "executed");
-      if (sendMailRes == "error")
+     socket.reconnectServer("127.0.0.1");
+      // process all mails in this batch
+      // check new mail 
+      cout << "Checking new mail..." << endl;
+      if (currMailIdx >= mailJson["value"].size())
       {
-        cout << "Send mail failed" << endl;
+        cout << "No new mail to processed " << endl;
+        sleep(10);
         break;
       }
       else
-      {
-        cout << "Send mail success" << endl;
-        currMailIdx++;
-      }
-    }
-    else
-      cout << "Server response failed" << endl;
+        cout << "New mail available, processing new mail..." << endl;
 
-    sleep(10);
+      // extract mail content to to use as command
+      auto body = mailJson["value"][currMailIdx]["bodyPreview"];
+      cout << "body: " << mailJson.dump(4) << endl;
+      if (body.is_null())
+        body = "";
+      string subject = mailJson["value"][currMailIdx]["subject"];
+      string payload = subject + " " + (string)body;
+      string command = subject;
+
+      // request to server
+      cout << "Sending payload: " << payload << " to server, waiting for server response..." << endl;
+      string res = socket.sendMessage(payload);
+      cout << "Server responded." << endl;
+      vector<string> hasAttach = {"getfile", "recordwebcam", "keylogger", "screenshot", "listapp", "listservice"};
+   
+      // if server response, sendMail back to notify user
+      auto it = find(hasAttach.begin(), hasAttach.end(), command);
+      if (it == hasAttach.end())
+      {
+        cout << "Sending no attachment mail " << endl;
+        g.sendMail(command, "ok");
+      }
+      else
+      {
+        cout << "Sending mail with attachment: " << res << endl;
+        // string extension = "";
+        // extension = command == "recordwebcam" ? ".avi":
+        //             command == "keylogger" ? ".txt":
+        //             command == "screenshot" ? ".png" : ".txt" ;
+        string attachName = body;
+        if (command == "recordwebcam")
+          attachName = "video.avi";
+        if (command == "screenshot")
+          attachName = "screenshot.png";
+        if (command == "listapp" || command == "listservice" || command == "keylogger")
+          attachName = "list.txt";
+        g.sendMail(command, " ", attachName, encodeBase64(res));
+        sleep(1);
+      }
+
+      currMailIdx++;
+      cout << "Sent mail successfully" << endl;
+      socket.closeConnection();
+      sleep(10);
+    }
   }
 }

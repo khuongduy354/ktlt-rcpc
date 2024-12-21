@@ -15,3 +15,8 @@ if "%1"=="server" (
     echo DONE
 )
 
+if "%1"=="all" (
+	g++ server.cpp lib.cpp -o server %INCLUDE_PATHS% %LIB_PATHS% %LIBS% %opencv%
+	g++ client.cpp lib.cpp -o client %INCLUDE_PATHS% %LIB_PATHS% %LIBS% %opencv%
+    echo DONE
+)

