@@ -62,9 +62,7 @@ public:
             while (1)
             {
                 memset(&buffer, 0, sizeof(buffer));
-            cout << "before  " << endl;
                 int nread = recv(clientSocket, buffer, sizeof(buffer), 0);
-            cout << "after" << endl;
                 if (nread == 0){
                     cout << "No bytes received, terminating client" << endl;
                     break;
@@ -268,7 +266,7 @@ public:
         // read all mails from Archieve folder
         // string url = baseUrl + (string) "/me/mailFolders/" + ARCHIEVED_ID + "/messages";
         
-        string selectQuery = "?$select=body,subject,bodyPreview&$filter=(from/emailAddress/address)\%20eq\%20'23127478@student.hcmus.edu.vn'";
+        string selectQuery = "?$select=body,subject,bodyPreview&$filter=(from/emailAddress/address)\%20eq\%20'23127478@student.hcmus.edu.vn'&$top=20";
         string url = baseUrl + (string) "/me/messages" + selectQuery;
         string res = fetch(url, HTTPMethod::GET, {"Prefer: outlook.body-content-type=\"text\""});
         return res;
@@ -313,8 +311,6 @@ public:
             to_string(attachmentPayload.dump().size());
 
             string atRes = fetch(attachmentUrl,  HTTPMethod::POST, {"Content-Type: application/json", contentLengthHeader},attachmentPayload.dump());
-            cout << atRes << endl;
-
         }
 
         // send mail https://graph.microsoft.com/v1.0/me/messages/{id}/send

